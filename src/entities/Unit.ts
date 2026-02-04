@@ -66,7 +66,9 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
         totalSteering.limit(this.maxForce);
         totalSteering.divide(new Phaser.Math.Vector2(this.mass, this.mass));
         
-        this.velocity.add(totalSteering);
+        // Use a lerp or smoother addition for velocity to reduce jitter
+        const targetVelocity = this.velocity.clone().add(totalSteering);
+        this.velocity.lerp(targetVelocity, 0.1); 
         this.velocity.limit(this.maxSpeed);
 
         this.x += this.velocity.x * (delta / 16.6);

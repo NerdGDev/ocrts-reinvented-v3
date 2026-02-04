@@ -19,6 +19,10 @@ export class CombatManager {
         
         // Enemy attacks Player
         this.processCombat(enemyUnits, playerUnits, 0xff0000);
+
+        // Add a fade effect to the lines by not clearing every frame?
+        // Actually, Phaser Graphics .clear() is required, so we use a lifed system if we want persistence.
+        // For now, let's just make them thinner and higher alpha.
     }
 
     private processCombat(attackers: Unit[], targets: Unit[], color: number) {
@@ -44,14 +48,19 @@ export class CombatManager {
     }
 
     private fireLaser(from: Unit, to: Unit, color: number) {
-        this.laserGraphics.lineStyle(2, color, 0.6);
+        this.laserGraphics.lineStyle(1, color, 0.4); // Thinner and more transparent
         this.laserGraphics.lineBetween(from.x, from.y, to.x, to.y);
         
         // Add a small flash at the tip
-        if (Math.random() > 0.8) {
-            this.scene.add.circle(to.x, to.y, 2, color, 1)
-                .setDepth(11)
-                .setAlpha(1);
+        if (Math.random() > 0.95) { // Less frequent flashes to reduce jitter visual
+            const circle = this.scene.add.circle(to.x, to.y, 1.5, color, 0.8);
+            this.scene.tweens.add({
+                targets: circle,
+                alpha: 0,
+                scale: 2,
+                duration: 100,
+                onComplete: () => circle.destroy()
+            });
         }
     }
 }
