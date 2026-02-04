@@ -106,11 +106,21 @@ class MainScene extends Phaser.Scene {
         });
     }
 
-    update(time: number, delta: number) {
+    public update(time: number, delta: number) {
         this.uiManager.updateUnitCount(this.playerUnits.length);
         
         // Update Spawning
         this.spawnerManager.update(time, this.nodes, this.playerUnits, this.enemyUnits);
+
+        // Check Victory/Loss
+        const playerNodes = this.nodes.filter(n => n.team === NodeTeam.PLAYER).length;
+        const enemyNodes = this.nodes.filter(n => n.team === NodeTeam.ENEMY).length;
+
+        if (playerNodes === this.nodes.length) {
+            this.uiManager.showOverlay('SECTOR SECURED', 0x00ff00);
+        } else if (enemyNodes === this.nodes.length) {
+            this.uiManager.showOverlay('MISSION FAILURE', 0xff0000);
+        }
 
         // Update Nodes
         const allUnits = [...this.playerUnits, ...this.enemyUnits];

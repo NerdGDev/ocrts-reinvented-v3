@@ -39,6 +39,29 @@ export class UIManager {
         this.unitCountText.setText(`FLEET: ${count}`);
     }
 
+    public showOverlay(text: string, color: number) {
+        if (this.scene.children.getByName('game_overlay')) return;
+
+        const { width, height } = this.scene.scale;
+        const bg = this.scene.add.rectangle(width/2, height/2, width, 120, 0x000000, 0.8)
+            .setName('game_overlay')
+            .setDepth(200);
+        
+        const hexColor = `#${color.toString(16).padStart(6, '0')}`;
+        const mainText = this.scene.add.text(width/2, height/2, text, {
+            fontSize: '48px',
+            fontFamily: 'monospace',
+            color: hexColor,
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+
+        this.scene.tweens.add({
+            targets: [bg, mainText],
+            alpha: { from: 0, to: 1 },
+            duration: 1000
+        });
+    }
+
     /**
      * Create a tactical ping at the target location
      */
