@@ -47,30 +47,32 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
         let currentMaxSpeed = this.maxSpeed;
         for (const nebula of nebulas) {
             const dist = Phaser.Math.Distance.Between(this.x, this.y, nebula.x, nebula.y);
-            if (dist < nebula.displayWidth / 2) {
+            // Smaller radius for actual entry, larger for "sensing"
+            if (dist < nebula.displayWidth * 0.4) {
                 currentMaxSpeed *= nebula.slowFactor;
                 break;
             }
         }
 
         // 1. Separation (High priority)
-        const sep = this.steeringManager.separate(this, neighbors, 25).scale(1.5);
+        const sep = this.steeringManager.separate(this, neighbors, 30).scale(2.0); // Stronger separation
         totalSteering.add(sep);
 
         // 2. Cohesion & Alignment (Group flow)
         if (neighbors.length > 0) {
-            const coh = this.steeringManager.cohesion(this, neighbors, 50).scale(0.5);
-            const ali = this.steeringManager.align(this, neighbors, 50).scale(0.5);
+            // Smaller cohesion to prevent "clumping" too hard
+            const coh = this.steeringManager.cohesion(this, neighbors, 60).scale(0.3);
+            const ali = this.steeringManager.align(this, neighbors, 60).scale(0.6);
             totalSteering.add(coh);
             totalSteering.add(ali);
         }
 
         // 3. Movement Goal
         if (targetPos) {
-            const seek = this.steeringManager.seek(this, targetPos, 10).scale(1.0);
+            const seek = this.steeringManager.seek(this, targetPos, 10).scale(0.8);
             totalSteering.add(seek);
         } else {
-            const wander = this.steeringManager.wander(this, this.wanderTarget).scale(0.2);
+            const wander = this.steeringManager.wander(this, this.wanderTarget).scale(0.1);
             totalSteering.add(wander);
         }
 
@@ -80,7 +82,7 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
         
         // Use a lerp or smoother addition for velocity to reduce jitter
         const targetVelocity = this.velocity.clone().add(totalSteering);
-        this.velocity.lerp(targetVelocity, 0.1); 
+        this.velocity.lerp(targetVelocity, 0.05); // Even smoother lerp
         this.velocity.limit(currentMaxSpeed);
 
         this.x += this.velocity.x * (delta / 16.6);
