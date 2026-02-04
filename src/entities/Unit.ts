@@ -4,6 +4,8 @@ import { SteeringManager } from '../systems/SteeringManager';
 import type { UnitStats } from '../types/unitTypes';
 import { UNIT_CLASSES } from '../types/unitTypes';
 
+import { Nebula } from './Nebula';
+
 export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
     public team: 'PLAYER' | 'ENEMY';
     public velocity: Phaser.Math.Vector2;
@@ -38,8 +40,18 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
         return new Phaser.Math.Vector2(this.x, this.y);
     }
 
-    public updateUnit(delta: number, neighbors: Unit[], targetPos?: Phaser.Math.Vector2) {
+    public updateUnit(delta: number, neighbors: Unit[], nebulas: Nebula[], targetPos?: Phaser.Math.Vector2) {
         let totalSteering = new Phaser.Math.Vector2(0, 0);
+
+        // Check for nebula slowdown
+        let currentMaxSpeed = this.maxSpeed;
+        for (const nebula of nebulas) {
+            const dist = Phaser.Math.Distance.Between(this.x, this.y, nebula.x, nebula.y);
+            if (dist < nebula.displayWidth / 2) {
+                currentMaxSpeed *= nebula.slowFactor;
+                break;
+            }
+        }
 
         // 1. Separation (High priority)
         const sep = this.steeringManager.separate(this, neighbors, 25).scale(1.5);
@@ -69,7 +81,7 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
         // Use a lerp or smoother addition for velocity to reduce jitter
         const targetVelocity = this.velocity.clone().add(totalSteering);
         this.velocity.lerp(targetVelocity, 0.1); 
-        this.velocity.limit(this.maxSpeed);
+        this.velocity.limit(currentMaxSpeed);
 
         this.x += this.velocity.x * (delta / 16.6);
         this.y += this.velocity.y * (delta / 16.6);

@@ -5,11 +5,13 @@ import { CombatManager } from './systems/CombatManager';
 import { StrategicNode } from './entities/StrategicNode';
 import { NodeTeam } from './types/nodeTypes';
 import { SpawnerManager } from './systems/SpawnerManager';
+import { Nebula } from './entities/Nebula';
 
 class MainScene extends Phaser.Scene {
     private playerUnits: Unit[] = [];
     private enemyUnits: Unit[] = [];
     private nodes: StrategicNode[] = [];
+    private nebulas: Nebula[] = [];
     private rallyPoint: Phaser.Math.Vector2 | null = null;
     private uiManager!: UIManager;
     private combatManager!: CombatManager;
@@ -37,6 +39,18 @@ class MainScene extends Phaser.Scene {
         graphics.fillStyle(0xffffff, 1);
         graphics.fillCircle(15, 15, 15);
         graphics.generateTexture('node', 30, 30);
+
+        // Nebula texture
+        graphics.clear();
+        const nebulaSize = 128;
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * nebulaSize;
+            const y = Math.random() * nebulaSize;
+            const radius = 10 + Math.random() * 20;
+            graphics.fillStyle(0x00ffff, 0.05);
+            graphics.fillCircle(x, y, radius);
+        }
+        graphics.generateTexture('nebula', nebulaSize, nebulaSize);
     }
 
     create() {
@@ -53,6 +67,13 @@ class MainScene extends Phaser.Scene {
         this.nodes.push(new StrategicNode(this, width / 2, 150, NodeTeam.NEUTRAL));
         this.nodes.push(new StrategicNode(this, width / 2, height - 150, NodeTeam.NEUTRAL));
         this.nodes.push(new StrategicNode(this, width - 100, height / 2, NodeTeam.ENEMY));
+
+        // Create Nebulae
+        for (let i = 0; i < 5; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            this.nebulas.push(new Nebula(this, x, y));
+        }
 
         // Spawn Player Units
         const classes = ['SCOUT', 'FIGHTER', 'HEAVY'];
@@ -101,7 +122,7 @@ class MainScene extends Phaser.Scene {
         // Update Units & Remove Dead ones
         this.playerUnits = this.playerUnits.filter(u => {
             if (u.hp <= 0) { u.destroy(); return false; }
-            u.updateUnit(delta, this.playerUnits, this.rallyPoint || undefined);
+            u.updateUnit(delta, this.playerUnits, this.nebulas, this.rallyPoint || undefined);
             return true;
         });
 
@@ -109,7 +130,7 @@ class MainScene extends Phaser.Scene {
             if (u.hp <= 0) { u.destroy(); return false; }
             // AI simple logic: Enemies move towards player units
             const target = this.playerUnits.length > 0 ? this.playerUnits[0].position : undefined;
-            u.updateUnit(delta, this.enemyUnits, target);
+            u.updateUnit(delta, this.enemyUnits, this.nebulas, target);
             return true;
         });
     }
