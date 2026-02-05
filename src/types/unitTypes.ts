@@ -35,5 +35,14 @@ export const UNIT_CLASSES: Record<string, UnitStats> = {
         hp: 300,
         range: 350,
         color: 0xffff00
+    },
+    FRIGATE: {
+        type: 'FRIGATE',
+        maxSpeed: 0.8,
+        maxForce: 0.03,
+        mass: 5.0,
+        hp: 1000,
+        range: 500,
+        color: 0xff00ff
     }
 };

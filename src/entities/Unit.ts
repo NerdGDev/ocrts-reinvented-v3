@@ -14,6 +14,7 @@ export class Unit extends Phaser.GameObjects.Sprite implements ISteeringAgent {
     public mass: number;
     public hp: number;
     public stats: UnitStats;
+    public isDocking: boolean = false;
     
     protected steeringManager: SteeringManager;
     protected wanderTarget: Phaser.Math.Vector2;

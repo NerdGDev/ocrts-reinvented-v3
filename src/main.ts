@@ -7,10 +7,13 @@ import { NodeTeam } from './types/nodeTypes';
 import { SpawnerManager } from './systems/SpawnerManager';
 import { Nebula } from './entities/Nebula';
 import { Asteroid } from './entities/Asteroid';
+import { Frigate } from './entities/Frigate';
 
 class MainScene extends Phaser.Scene {
     private playerUnits: Unit[] = [];
     private enemyUnits: Unit[] = [];
+    private playerFrigates: Frigate[] = [];
+    private enemyFrigates: Frigate[] = [];
     private nodes: StrategicNode[] = [];
     private nebulas: Nebula[] = [];
     private asteroids: Asteroid[] = [];
@@ -91,6 +94,8 @@ class MainScene extends Phaser.Scene {
         }
 
         // Spawn Player Units
+        this.playerFrigates.push(new Frigate(this, 50, height / 2, 'PLAYER'));
+
         const classes = ['SCOUT', 'FIGHTER', 'HEAVY'];
         for (let i = 0; i < 30; i++) {
             const x = 100 + Math.random() * 100;
@@ -101,6 +106,8 @@ class MainScene extends Phaser.Scene {
         }
 
         // Spawn Enemy Units
+        this.enemyFrigates.push(new Frigate(this, width - 50, height / 2, 'ENEMY'));
+
         for (let i = 0; i < 30; i++) {
             const x = width - 100 - Math.random() * 100;
             const y = height / 2 + (Math.random() - 0.5) * 200;
@@ -138,34 +145,74 @@ class MainScene extends Phaser.Scene {
         }
 
         // Update Nodes
-        const allUnits = [...this.playerUnits, ...this.enemyUnits];
+        const allUnits = [...this.playerUnits, ...this.enemyUnits, ...this.playerFrigates, ...this.enemyFrigates];
         this.nodes.forEach(node => node.updateNode(allUnits));
 
+        // Update Frigates
+        this.playerFrigates.forEach(f => f.updateUnit(delta, this.playerUnits, this.nebulas, this.rallyPoint || undefined));
+        this.enemyFrigates.forEach(f => f.updateUnit(delta, this.enemyUnits, this.nebulas));
+
+        // Launch repaired units
+        [...this.playerFrigates, ...this.enemyFrigates].forEach(f => {
+            f.dockedUnits.forEach((u, index) => {
+                if (u.hp >= u.stats.hp) {
+                    u.isDocking = false;
+                    f.launchUnit();
+                }
+            });
+        });
+
         // Update Combat
-        this.combatManager.update(delta, this.playerUnits, this.enemyUnits);
+        this.combatManager.update(delta, [...this.playerUnits, ...this.playerFrigates], [...this.enemyUnits, ...this.enemyFrigates]);
 
         // Update Asteroids
         this.asteroids.forEach(a => a.update());
 
         // Check Asteroid Collisions
-        this.physics.add.overlap(this.playerUnits, this.asteroids, (u, a) => {
+        this.physics.add.overlap([...this.playerUnits, ...this.playerFrigates], this.asteroids, (u, a) => {
             (u as Unit).hp -= (a as Asteroid).damageValue * (delta / 1000);
         });
-        this.physics.add.overlap(this.enemyUnits, this.asteroids, (u, a) => {
+        this.physics.add.overlap([...this.enemyUnits, ...this.enemyFrigates], this.asteroids, (u, a) => {
             (u as Unit).hp -= (a as Asteroid).damageValue * (delta / 1000);
         });
 
         // Update Units & Remove Dead ones
         this.playerUnits = this.playerUnits.filter(u => {
             if (u.hp <= 0) { u.destroy(); return false; }
-            u.updateUnit(delta, this.playerUnits, this.nebulas, this.rallyPoint || undefined);
+            
+            // Docking logic
+            if (u.hp < u.stats.hp * 0.25) u.isDocking = true;
+            
+            let target = this.rallyPoint || undefined;
+            if (u.isDocking && this.playerFrigates.length > 0) {
+                const nearestFrigate = this.playerFrigates[0]; // Simple logic for now
+                target = nearestFrigate.position;
+                if (Phaser.Math.Distance.Between(u.x, u.y, nearestFrigate.x, nearestFrigate.y) < 50) {
+                    nearestFrigate.dockUnit(u);
+                    return true; // Still "alive" but hidden
+                }
+            }
+
+            u.updateUnit(delta, this.playerUnits, this.nebulas, target);
             return true;
         });
 
         this.enemyUnits = this.enemyUnits.filter(u => {
             if (u.hp <= 0) { u.destroy(); return false; }
-            // AI simple logic: Enemies move towards player units
-            const target = this.playerUnits.length > 0 ? this.playerUnits[0].position : undefined;
+
+            if (u.hp < u.stats.hp * 0.25) u.isDocking = true;
+
+            let target = this.playerUnits.length > 0 ? this.playerUnits[0].position : undefined;
+            
+            if (u.isDocking && this.enemyFrigates.length > 0) {
+                const nearestFrigate = this.enemyFrigates[0];
+                target = nearestFrigate.position;
+                if (Phaser.Math.Distance.Between(u.x, u.y, nearestFrigate.x, nearestFrigate.y) < 50) {
+                    nearestFrigate.dockUnit(u);
+                    return true;
+                }
+            }
+
             u.updateUnit(delta, this.enemyUnits, this.nebulas, target);
             return true;
         });
