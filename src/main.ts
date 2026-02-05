@@ -6,12 +6,14 @@ import { StrategicNode } from './entities/StrategicNode';
 import { NodeTeam } from './types/nodeTypes';
 import { SpawnerManager } from './systems/SpawnerManager';
 import { Nebula } from './entities/Nebula';
+import { Asteroid } from './entities/Asteroid';
 
 class MainScene extends Phaser.Scene {
     private playerUnits: Unit[] = [];
     private enemyUnits: Unit[] = [];
     private nodes: StrategicNode[] = [];
     private nebulas: Nebula[] = [];
+    private asteroids: Asteroid[] = [];
     private rallyPoint: Phaser.Math.Vector2 | null = null;
     private uiManager!: UIManager;
     private combatManager!: CombatManager;
@@ -51,6 +53,12 @@ class MainScene extends Phaser.Scene {
             graphics.fillCircle(x, y, radius);
         }
         graphics.generateTexture('nebula', nebulaSize, nebulaSize);
+
+        // Asteroid texture
+        graphics.clear();
+        graphics.fillStyle(0x888888, 1);
+        graphics.fillCircle(10, 10, 10);
+        graphics.generateTexture('asteroid', 20, 20);
     }
 
     create() {
@@ -73,6 +81,13 @@ class MainScene extends Phaser.Scene {
             const x = Math.random() * width;
             const y = Math.random() * height;
             this.nebulas.push(new Nebula(this, x, y));
+        }
+
+        // Create Asteroids
+        for (let i = 0; i < 15; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            this.asteroids.push(new Asteroid(this, x, y));
         }
 
         // Spawn Player Units
@@ -128,6 +143,17 @@ class MainScene extends Phaser.Scene {
 
         // Update Combat
         this.combatManager.update(delta, this.playerUnits, this.enemyUnits);
+
+        // Update Asteroids
+        this.asteroids.forEach(a => a.update());
+
+        // Check Asteroid Collisions
+        this.physics.add.overlap(this.playerUnits, this.asteroids, (u, a) => {
+            (u as Unit).hp -= (a as Asteroid).damageValue * (delta / 1000);
+        });
+        this.physics.add.overlap(this.enemyUnits, this.asteroids, (u, a) => {
+            (u as Unit).hp -= (a as Asteroid).damageValue * (delta / 1000);
+        });
 
         // Update Units & Remove Dead ones
         this.playerUnits = this.playerUnits.filter(u => {
